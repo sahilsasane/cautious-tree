@@ -1,0 +1,2 @@
+export MONGO_URI=
+export JWT_SECRET=
