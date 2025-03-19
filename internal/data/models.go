@@ -12,13 +12,15 @@ var (
 )
 
 type Models struct {
-	Users UserModel
+	Users  UserModel
+	Tokens TokenModel
 }
 
 func NewModels(client *mongo.Client, dbName string) Models {
 	db := client.Database(dbName)
 
 	return Models{
-		Users: UserModel{Collection: db.Collection("users")},
+		Users:  UserModel{Collection: db.Collection("users")},
+		Tokens: TokenModel{Collection: db.Collection("tokens")},
 	}
 }

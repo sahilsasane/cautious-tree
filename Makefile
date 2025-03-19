@@ -22,8 +22,8 @@ confirm:
 .PHONY: run/api
 run/api:
 	go run ./cmd/api \
-		-mongo-uri="$${MONGO_URI}" \
-		-jwt-secret="$${JWT_SECRET}"
+		-mongo-uri="${MONGO_URI}" \
+		-jwt-secret="${JWT_SECRET}"
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #

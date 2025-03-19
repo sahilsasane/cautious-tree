@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"crypto/sha256"
 	"errors"
 	"time"
 
@@ -19,13 +20,14 @@ var (
 var AnonymousUser = &User{}
 
 type User struct {
-	ID        primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	CreatedAt time.Time          `bson:"created_at" json:"created_at"`
-	Name      string             `bson:"name" json:"name"`
-	Email     string             `bson:"email" json:"email"`
-	Password  password           `bson:"password" json:"-"`
-	Activated bool               `bson:"activated" json:"activated"`
-	Version   int                `bson:"version" json:"-"`
+	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
+	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
+	Name         string             `bson:"name" json:"name"`
+	Email        string             `bson:"email" json:"email"`
+	PasswordHash []byte             `bson:"password_hash" json:"-"`
+	Password     password           `bson:"-" json:"-"`
+	Activated    bool               `bson:"activated" json:"activated"`
+	Version      int                `bson:"version" json:"-"`
 }
 
 type password struct {
@@ -94,7 +96,16 @@ func (m UserModel) Insert(user *User) error {
 	user.CreatedAt = time.Now()
 	user.Version = 1
 
-	res, err := m.Collection.InsertOne(ctx, user)
+	userDoc := bson.M{
+		"created_at":    user.CreatedAt,
+		"name":          user.Name,
+		"email":         user.Email,
+		"password_hash": user.Password.hash,
+		"activated":     user.Activated,
+		"version":       user.Version,
+	}
+
+	res, err := m.Collection.InsertOne(ctx, userDoc)
 	if err != nil {
 		switch {
 		case mongo.IsDuplicateKeyError(err):
@@ -123,5 +134,101 @@ func (m UserModel) GetByEmail(email string) (*User, error) {
 			return nil, err
 		}
 	}
+
+	user.Password.hash = user.PasswordHash
+
 	return &user, nil
+}
+
+func (m UserModel) Update(user *User) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	result := m.Collection.FindOneAndUpdate(
+		ctx,
+		bson.M{"_id": user.ID},
+		bson.M{
+			"$set": bson.M{
+				"name":      user.Name,
+				"email":     user.Email,
+				"activated": user.Activated,
+				"version":   user.Version + 1,
+			},
+		},
+	)
+
+	if result.Err() != nil {
+		switch {
+		case mongo.IsDuplicateKeyError(result.Err()):
+			return ErrDuplicateEmail
+		case errors.Is(result.Err(), mongo.ErrNoDocuments):
+			return ErrEditConflict
+		default:
+			return result.Err()
+		}
+	}
+
+	return nil
+}
+
+func (m UserModel) GetForToken(tokenScope, tokenPlaintext string) (*User, error) {
+	tokenHash := sha256.Sum256([]byte(tokenPlaintext))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	// First find the token
+	var token Token
+	err := m.Collection.Database().Collection("tokens").FindOne(ctx, bson.M{
+		"hash":   tokenHash[:],
+		"scope":  tokenScope,
+		"expiry": bson.M{"$gt": time.Now()},
+	}).Decode(&token)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	// Then get the associated user
+	var user User
+	err = m.Collection.FindOne(ctx, bson.M{"_id": token.UserID}).Decode(&user)
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
+}
+
+func (m UserModel) Get(id primitive.ObjectID) (*User, error) {
+	var user User
+
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	err := m.Collection.FindOne(ctx, bson.M{"_id": primitive.ObjectID(id)}).Decode(&user)
+
+	if err != nil {
+		switch {
+		case errors.Is(err, mongo.ErrNoDocuments):
+			return nil, ErrRecordNotFound
+		default:
+			return nil, err
+		}
+	}
+
+	return &user, nil
+}
+
+func (u *User) IsAnonymous() bool {
+	return u == AnonymousUser
 }
