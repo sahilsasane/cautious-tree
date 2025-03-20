@@ -31,6 +31,14 @@ type config struct {
 		minPoolSize uint64
 		maxIdleTime string
 	}
+	// limiter struct {
+	// 	rps     float64
+	// 	burst   int
+	// 	enabled bool
+	// }
+	// cors struct {
+	// 	trustedOrigins []string
+	// }
 	jwt struct {
 		secret string
 	}
