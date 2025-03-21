@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
@@ -46,6 +45,7 @@ func (app *application) registerUserHandler(w http.ResponseWriter, r *http.Reque
 		switch {
 		case errors.Is(err, data.ErrDuplicateEmail):
 			v.AddError("email", "a user with this email address already exists")
+			app.failedValidationResponse(w, r, v.Errors)
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
@@ -107,7 +107,7 @@ func (app *application) activateUserHandler(w http.ResponseWriter, r *http.Reque
 		return
 	}
 	err = app.models.Tokens.DeleteAllForUser(data.ScopeActivation, user.ID)
-	fmt.Println("done")
+	// fmt.Println("done")
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return

@@ -22,5 +22,9 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/activations", app.createActivationTokenHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/tokens/password-reset", app.createPasswordResetTokenHandler)
 
+	router.HandlerFunc(http.MethodGet, "/v1/channels/:id", app.getChannelHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/channels/:id/sessions", app.getAllChannelSessionsHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/channels/", app.createChannelHandler)
+
 	return router
 }

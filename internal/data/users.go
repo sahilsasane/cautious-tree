@@ -9,6 +9,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 	"golang.org/x/crypto/bcrypt"
 	"misc.sahilsasane.net/internal/validator"
 )
@@ -20,14 +21,15 @@ var (
 var AnonymousUser = &User{}
 
 type User struct {
-	ID           primitive.ObjectID `bson:"_id,omitempty" json:"id"`
-	CreatedAt    time.Time          `bson:"created_at" json:"created_at"`
-	Name         string             `bson:"name" json:"name"`
-	Email        string             `bson:"email" json:"email"`
-	PasswordHash []byte             `bson:"password_hash" json:"-"`
-	Password     password           `bson:"-" json:"-"`
-	Activated    bool               `bson:"activated" json:"activated"`
-	Version      int                `bson:"version" json:"-"`
+	ID           primitive.ObjectID   `bson:"_id,omitempty" json:"id"`
+	CreatedAt    time.Time            `bson:"created_at" json:"created_at"`
+	Name         string               `bson:"name" json:"name"`
+	Email        string               `bson:"email" json:"email"`
+	PasswordHash []byte               `bson:"password_hash" json:"-"`
+	Password     password             `bson:"-" json:"-"`
+	Channels     []primitive.ObjectID `bson:"channels" json:"channels"`
+	Activated    bool                 `bson:"activated" json:"activated"`
+	Version      int                  `bson:"version" json:"-"`
 }
 
 type password struct {
@@ -101,6 +103,7 @@ func (m UserModel) Insert(user *User) error {
 		"name":          user.Name,
 		"email":         user.Email,
 		"password_hash": user.Password.hash,
+		"channels":      []primitive.ObjectID{},
 		"activated":     user.Activated,
 		"version":       user.Version,
 	}
@@ -153,6 +156,9 @@ func (m UserModel) Update(user *User) error {
 				"email":     user.Email,
 				"activated": user.Activated,
 				"version":   user.Version + 1,
+			},
+			"$push": bson.M{
+				"channels": user.Channels,
 			},
 		},
 	)
@@ -227,6 +233,20 @@ func (m UserModel) Get(id primitive.ObjectID) (*User, error) {
 	}
 
 	return &user, nil
+}
+
+func (m UserModel) CreateIndexes() error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	_, err := m.Collection.Indexes().CreateOne(ctx, mongo.IndexModel{
+		Keys: bson.D{
+			{Key: "email", Value: 1},
+		},
+		Options: options.Index().SetUnique(true),
+	})
+
+	return err
 }
 
 func (u *User) IsAnonymous() bool {
