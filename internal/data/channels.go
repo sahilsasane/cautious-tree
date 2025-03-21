@@ -29,7 +29,8 @@ func (m ChannelModel) Insert(channel *Channel) (string, error) {
 	channel.CreatedAt = time.Now()
 
 	channelDoc := bson.M{
-		"created_at": channel.CreatedAt,
+		"_id":        channel.ID,
+		"created_at": time.Now(),
 		"tree":       channel.Tree,
 		"sessions":   channel.Sessions,
 		"user_id":    channel.UserId,

@@ -10,19 +10,12 @@ import (
 )
 
 func (app *application) getChannelHandler(w http.ResponseWriter, r *http.Request) {
-	var input struct {
-		ChannelId string `json:"channel_id"`
-	}
 
-	err := app.readJSON(w, r, &input)
-	if err != nil {
-		app.badRequestResponse(w, r, err)
-		return
-	}
+	id := app.readIDparam(r)
 
 	v := validator.New()
 
-	channel, err := app.models.Channel.GetById(input.ChannelId)
+	channel, err := app.models.Channel.GetById(id)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -87,10 +80,30 @@ func (app *application) createChannelHandler(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
+	newChannelId := primitive.NewObjectID()
+
+	tree := &data.Tree{
+		ChannelId: newChannelId.Hex(),
+		Root:      "",
+	}
+
+	treeId, err := app.models.Trees.Insert(tree)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	treeObjID, err := primitive.ObjectIDFromHex(treeId)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
 	channel := &data.Channel{
+		ID:       newChannelId,
 		UserId:   input.UserId,
 		Sessions: []primitive.ObjectID{},
-		Tree:     primitive.ObjectID{},
+		Tree:     treeObjID,
 	}
 
 	v := validator.New()

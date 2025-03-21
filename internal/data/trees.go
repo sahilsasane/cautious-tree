@@ -21,7 +21,7 @@ type TreeModel struct {
 	Collection *mongo.Collection
 }
 
-func (m TreeModel) Insert(tree *Tree) error {
+func (m TreeModel) Insert(tree *Tree) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -31,8 +31,8 @@ func (m TreeModel) Insert(tree *Tree) error {
 	treeDoc := bson.M{
 		"channel_id": tree.ChannelId,
 		"root":       tree.Root,
-		"created_at": tree.CreatedAt,
-		"updated_at": tree.UpdatedAt,
+		"created_at": time.Now(),
+		"updated_at": time.Now(),
 	}
 
 	res, err := m.Collection.InsertOne(ctx, treeDoc)
@@ -40,14 +40,14 @@ func (m TreeModel) Insert(tree *Tree) error {
 	if err != nil {
 		switch {
 		case mongo.IsDuplicateKeyError(err):
-			return ErrDuplicateEmail
+			return "", ErrDuplicateEmail
 		default:
-			return nil
+			return "", err
 		}
 	}
 	tree.ID = res.InsertedID.(primitive.ObjectID)
 
-	return nil
+	return tree.ID.Hex(), nil
 }
 
 func (m TreeModel) GetById(id string) (*Tree, error) {

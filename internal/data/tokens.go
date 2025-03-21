@@ -79,7 +79,6 @@ func (m TokenModel) Insert(token *Token) error {
 func (m TokenModel) DeleteAllForUser(scope string, userID primitive.ObjectID) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
-
-	_, err := m.Collection.DeleteMany(ctx, bson.M{"scope": scope, "_id": userID})
+	_, err := m.Collection.DeleteMany(ctx, bson.M{"scope": scope, "user_id": userID})
 	return err
 }

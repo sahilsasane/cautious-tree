@@ -34,5 +34,6 @@ func NewModels(client *mongo.Client, dbName string) Models {
 		Users:   users,
 		Tokens:  TokenModel{Collection: db.Collection("tokens")},
 		Channel: ChannelModel{Collection: db.Collection("channels")},
+		Trees:   TreeModel{Collection: db.Collection("trees")},
 	}
 }

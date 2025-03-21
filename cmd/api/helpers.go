@@ -7,9 +7,19 @@ import (
 	"io"
 	"net/http"
 	"strings"
+
+	"github.com/julienschmidt/httprouter"
 )
 
 type envelope map[string]interface{}
+
+func (app *application) readIDparam(r *http.Request) string {
+	params := httprouter.ParamsFromContext(r.Context())
+
+	id := params.ByName("id")
+
+	return id
+}
 
 func (app *application) writeJSON(w http.ResponseWriter, status int, data envelope, headers http.Header) error {
 	js, err := json.Marshal(data)
