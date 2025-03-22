@@ -1,1 +1,84 @@
 package main
+
+import (
+	"errors"
+	"net/http"
+
+	"go.mongodb.org/mongo-driver/bson/primitive"
+	"misc.sahilsasane.net/internal/data"
+	"misc.sahilsasane.net/internal/validator"
+)
+
+func (app *application) createSessionHandler(w http.ResponseWriter, r *http.Request) {
+	var input struct {
+		ChannelId string `json:"channel_id"`
+		IsRoot    bool   `json:"is_root"`
+		ParentId  string `json:"parent_id"`
+	}
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	session := &data.Session{
+		ChannelId: input.ChannelId,
+		Messages:  []primitive.ObjectID{},
+		IsRoot:    input.IsRoot,
+		ParentId:  input.ParentId,
+	}
+
+	v := validator.New()
+	sessionId, err := app.models.Sessions.Insert(session)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrCannotInsert):
+			v.AddError("session", "not able to insert data")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	objID, err := primitive.ObjectIDFromHex(sessionId)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	channel := &data.Channel{
+		Sessions: []primitive.ObjectID{objID},
+	}
+
+	err = app.models.Channel.Update(input.ChannelId, channel)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"message": "Created session successfully", "session_id": sessionId}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+}
+func (app *application) getSessionHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+func (app *application) getSessionMessagesHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+func (app *application) copySessionHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+func (app *application) appendContextHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+func (app *application) deleteSessionHandler(w http.ResponseWriter, r *http.Request) {
+
+}
+func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http.Request) {
+
+}

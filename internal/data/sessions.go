@@ -23,7 +23,7 @@ type SessionModel struct {
 	Collection *mongo.Collection
 }
 
-func (m SessionModel) Insert(session *Session) error {
+func (m SessionModel) Insert(session *Session) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -32,20 +32,23 @@ func (m SessionModel) Insert(session *Session) error {
 		"messages":   session.Messages,
 		"context":    session.Context,
 		"is_root":    session.IsRoot,
-		"parent_id":  session.ParentId,
 	}
 
-	_, err := m.Collection.InsertOne(ctx, sessionDoc)
+	if !session.IsRoot {
+		sessionDoc["parent_id"] = session.ParentId
+	}
+
+	res, err := m.Collection.InsertOne(ctx, sessionDoc)
 	if err != nil {
 		switch {
 		case mongo.IsDuplicateKeyError(err):
-			return ErrDuplicateEmail
+			return "", ErrCannotInsert
 		default:
-			return nil
+			return "", err
 		}
 	}
-
-	return nil
+	session.ID = res.InsertedID.(primitive.ObjectID)
+	return session.ID.Hex(), nil
 }
 
 func (m SessionModel) GetById(id string) (*Session, error) {

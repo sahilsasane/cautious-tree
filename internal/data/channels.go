@@ -83,10 +83,11 @@ func (m ChannelModel) Update(id string, channel *Channel) error {
 	if err != nil {
 		return err
 	}
-
 	channelDoc := bson.M{
-		"$set": bson.M{
-			"sessions": channel.Sessions,
+		"$push": bson.M{
+			"sessions": bson.M{
+				"$each": channel.Sessions,
+			},
 		},
 	}
 

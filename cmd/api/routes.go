@@ -26,5 +26,13 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodGet, "/v1/channels/:id/sessions", app.getAllChannelSessionsHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/channels/", app.createChannelHandler)
 
+	router.HandlerFunc(http.MethodPost, "/v1/sessions/", app.createSessionHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/sessions/:id", app.getSessionHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/sessions/:id/messages", app.getSessionMessagesHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/sessions/copy", app.copySessionHandler)
+	router.HandlerFunc(http.MethodPut, "/v1/sessions/:id", app.appendContextHandler)
+	router.HandlerFunc(http.MethodDelete, "/v1/sessions/:id", app.deleteSessionHandler)
+	router.HandlerFunc(http.MethodPost, "/v1/sessions/message", app.sendSessionMessageHandler)
+
 	return router
 }

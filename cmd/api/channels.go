@@ -113,13 +113,14 @@ func (app *application) createChannelHandler(w http.ResponseWriter, r *http.Requ
 		switch {
 		case errors.Is(err, data.ErrCannotInsert):
 			v.AddError("channel", "not able to insert")
+			app.failedValidationResponse(w, r, v.Errors)
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
 		return
 	}
 
-	err = app.writeJSON(w, http.StatusAccepted, envelope{"message": "Created channel successfully with id", "channel_id": channelId}, nil)
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"message": "Created channel successfully", "channel_id": channelId}, nil)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 	}
