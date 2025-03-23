@@ -10,11 +10,12 @@ import (
 )
 
 type Tree struct {
-	ID        primitive.ObjectID `json:"id" bson:"_id"`
-	ChannelId string             `json:"channel_id" bson:"channel_id"`
-	Root      string             `json:"root" bson:"root"`
-	CreatedAt time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt time.Time          `json:"updated_at" bson:"updated_at"`
+	ID            primitive.ObjectID `json:"id" bson:"_id"`
+	ChannelId     string             `json:"channel_id" bson:"channel_id"`
+	Root          string             `json:"root" bson:"root"`
+	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time          `json:"updated_at" bson:"updated_at"`
+	TreeStructure struct{}           `json:"tree" bson:"tree"`
 }
 
 type TreeModel struct {
@@ -25,12 +26,10 @@ func (m TreeModel) Insert(tree *Tree) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
-	tree.CreatedAt = time.Now()
-	tree.UpdatedAt = time.Now()
-
 	treeDoc := bson.M{
 		"channel_id": tree.ChannelId,
 		"root":       tree.Root,
+		"tree":       tree.TreeStructure,
 		"created_at": time.Now(),
 		"updated_at": time.Now(),
 	}
@@ -84,6 +83,7 @@ func (m TreeModel) Update(id string, tree *Tree) error {
 	treeDoc := bson.M{
 		"root":       tree.Root,
 		"updated_at": time.Now(),
+		"tree":       tree.TreeStructure,
 	}
 
 	err = m.Collection.FindOneAndUpdate(ctx, bson.M{"_id": objectID}, treeDoc).Err()

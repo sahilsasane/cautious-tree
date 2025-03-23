@@ -87,3 +87,40 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst int
 	}
 	return nil
 }
+
+// func (app *application) getUpdatedTree(session *data.Session) (*data.Tree, error) {
+// 	tree, err := app.models.Trees.GetById(session.ChannelId)
+// 	if err != nil {
+// 		switch {
+// 		case errors.Is(err, data.ErrRecordNotFound):
+// 			return nil, data.ErrRecordNotFound
+// 		default:
+// 			return nil, err
+// 		}
+// 	}
+// 	newTree := &data.Tree{}
+// 	treeStructure := app.getTreeStructure(session, tree)
+// 	if session.IsRoot {
+// 		newTree = &data.Tree{
+// 			ChannelId: session.ChannelId,
+// 			Root:      session.ID.Hex(),
+// 			Tree:      treeStructure,
+// 		}
+// 	} else {
+// 		newTree = &data.Tree{
+// 			ChannelId: session.ChannelId,
+// 			Tree:      treeStructure,
+// 		}
+// 	}
+// 	return newTree, nil
+// }
+
+// func (app *application) getTreeStructure(session *data.Session, tree *data.Tree) {
+// 	if session.IsRoot {
+// 		treeStruct :=  {
+
+// 		}
+// 	} else {
+
+// 	}
+// }

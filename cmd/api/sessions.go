@@ -57,6 +57,16 @@ func (app *application) createSessionHandler(w http.ResponseWriter, r *http.Requ
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	session.ID, err = primitive.ObjectIDFromHex(sessionId)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	// get updated tree structure
+
+	// treeStructure, err := app.getUpdatedTree(session)
+
+	// update tree structure
 
 	err = app.writeJSON(w, http.StatusAccepted, envelope{"message": "Created session successfully", "session_id": sessionId}, nil)
 	if err != nil {
@@ -65,11 +75,29 @@ func (app *application) createSessionHandler(w http.ResponseWriter, r *http.Requ
 	}
 }
 func (app *application) getSessionHandler(w http.ResponseWriter, r *http.Request) {
+	id := app.readIDparam(r)
 
-}
-func (app *application) getSessionMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	v := validator.New()
 
+	session, err := app.models.Sessions.GetById(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"session": session}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 }
+
 func (app *application) copySessionHandler(w http.ResponseWriter, r *http.Request) {
 
 }
