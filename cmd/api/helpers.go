@@ -1,6 +1,7 @@
 package main
 
 import (
+	"container/list"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -90,7 +91,7 @@ func (app *application) readJSON(w http.ResponseWriter, r *http.Request, dst int
 }
 
 func (app *application) getUpdatedTree(session *data.Session) (*data.Tree, error) {
-	tree, err := app.models.Trees.GetById(session.ChannelId)
+	tree, err := app.models.Trees.GetByChannelId(session.ChannelId)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrRecordNotFound):
@@ -127,6 +128,32 @@ func (app *application) getTreeStructure(session *data.Session, tree *data.Tree)
 		existingTree := tree.TreeStructure
 		parentId := session.ParentId
 
-		return map[string]interface{}{}
+		queue := list.New()
+		queue.PushBack(existingTree)
+
+		for queue.Len() > 0 {
+			node := queue.Remove(queue.Front()).(map[string]interface{})
+
+			if node["root"].(string) == parentId {
+				children := node["children"].([]interface{})
+				children = append(children, map[string]interface{}{
+					"root":     session.ID.Hex(),
+					"children": []interface{}{},
+				})
+				node["children"] = children
+				return existingTree
+			}
+
+			// Add all children to the queue
+			if children, ok := node["children"].([]interface{}); ok {
+				for _, child := range children {
+					if childMap, ok := child.(map[string]interface{}); ok {
+						queue.PushBack(childMap)
+					}
+				}
+			}
+		}
+
+		return existingTree
 	}
 }

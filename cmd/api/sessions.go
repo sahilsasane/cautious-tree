@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 
 	"go.mongodb.org/mongo-driver/bson/primitive"
@@ -41,12 +42,14 @@ func (app *application) createSessionHandler(w http.ResponseWriter, r *http.Requ
 		}
 		return
 	}
+	fmt.Print("\n\n1\n")
 
 	objID, err := primitive.ObjectIDFromHex(sessionId)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	fmt.Print("\n\n2\n")
 
 	channel := &data.Channel{
 		Sessions: []primitive.ObjectID{objID},
@@ -57,16 +60,28 @@ func (app *application) createSessionHandler(w http.ResponseWriter, r *http.Requ
 		app.serverErrorResponse(w, r, err)
 		return
 	}
+	fmt.Print("\n\n3\n")
+
 	session.ID, err = primitive.ObjectIDFromHex(sessionId)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 	// get updated tree structure
-
-	// treeStructure, err := app.getUpdatedTree(session)
+	newTree, err := app.getUpdatedTree(session)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	fmt.Print("\n\n4\n")
 
 	// update tree structure
+	err = app.models.Trees.Update(input.ChannelId, newTree)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+	fmt.Print("\n\n5\n")
 
 	err = app.writeJSON(w, http.StatusAccepted, envelope{"message": "Created session successfully", "session_id": sessionId}, nil)
 	if err != nil {

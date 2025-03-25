@@ -2,6 +2,7 @@ package data
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"go.mongodb.org/mongo-driver/bson"
@@ -26,8 +27,13 @@ func (m TreeModel) Insert(tree *Tree) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	objectID, err := primitive.ObjectIDFromHex(tree.ChannelId)
+	if err != nil {
+		return "", err
+	}
+
 	treeDoc := bson.M{
-		"channel_id": tree.ChannelId,
+		"channel_id": objectID,
 		"root":       tree.Root,
 		"tree":       tree.TreeStructure,
 		"created_at": time.Now(),
@@ -49,7 +55,7 @@ func (m TreeModel) Insert(tree *Tree) (string, error) {
 	return tree.ID.Hex(), nil
 }
 
-func (m TreeModel) GetById(id string) (*Tree, error) {
+func (m TreeModel) GetByChannelId(id string) (*Tree, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
@@ -59,15 +65,14 @@ func (m TreeModel) GetById(id string) (*Tree, error) {
 	if err != nil {
 		return nil, err
 	}
-
-	err = m.Collection.FindOne(ctx, bson.M{"_id": objectID}).Decode(&tree)
+	fmt.Print(objectID)
+	err = m.Collection.FindOne(ctx, bson.M{"channel_id": objectID}).Decode(&tree)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return nil, ErrRecordNotFound
 		}
 		return nil, err
 	}
-
 	return &tree, nil
 }
 
@@ -81,18 +86,21 @@ func (m TreeModel) Update(id string, tree *Tree) error {
 	}
 
 	treeDoc := bson.M{
-		"root":       tree.Root,
-		"updated_at": time.Now(),
-		"tree":       tree.TreeStructure,
+		"$set": bson.M{
+			"root":       tree.Root,
+			"updated_at": time.Now(),
+			"tree":       tree.TreeStructure,
+		},
 	}
+	fmt.Print("\ndone\n\n")
 
-	err = m.Collection.FindOneAndUpdate(ctx, bson.M{"_id": objectID}, treeDoc).Err()
+	err = m.Collection.FindOneAndUpdate(ctx, bson.M{"channel_id": objectID}, treeDoc).Err()
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return ErrRecordNotFound
 		}
 		return err
 	}
-
+	fmt.Print("\ndone\n\n")
 	return nil
 }
