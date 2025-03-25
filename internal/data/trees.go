@@ -10,12 +10,12 @@ import (
 )
 
 type Tree struct {
-	ID            primitive.ObjectID `json:"id" bson:"_id"`
-	ChannelId     string             `json:"channel_id" bson:"channel_id"`
-	Root          string             `json:"root" bson:"root"`
-	CreatedAt     time.Time          `json:"created_at" bson:"created_at"`
-	UpdatedAt     time.Time          `json:"updated_at" bson:"updated_at"`
-	TreeStructure struct{}           `json:"tree" bson:"tree"`
+	ID            primitive.ObjectID     `json:"id" bson:"_id"`
+	ChannelId     string                 `json:"channel_id" bson:"channel_id"`
+	Root          string                 `json:"root" bson:"root"`
+	CreatedAt     time.Time              `json:"created_at" bson:"created_at"`
+	UpdatedAt     time.Time              `json:"updated_at" bson:"updated_at"`
+	TreeStructure map[string]interface{} `json:"tree" bson:"tree"`
 }
 
 type TreeModel struct {
