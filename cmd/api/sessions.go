@@ -142,7 +142,7 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 
 	// fmt.Printf("\n\n%+v\n\n", message)
 
-	err = app.models.Messages.Insert(message)
+	userMessageId, err := app.models.Messages.Insert(message)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrCannotInsert):
@@ -151,6 +151,11 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+	userMessageObjId, err := primitive.ObjectIDFromHex(userMessageId)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -177,7 +182,7 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		},
 	}
 
-	err = app.models.Messages.Insert(aiMessage)
+	aiMessageId, err := app.models.Messages.Insert(aiMessage)
 	if err != nil {
 		switch {
 		case errors.Is(err, data.ErrCannotInsert):
@@ -186,6 +191,31 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		default:
 			app.serverErrorResponse(w, r, err)
 		}
+		return
+	}
+	aiMessageObjId, err := primitive.ObjectIDFromHex(aiMessageId)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
+
+	session, err := app.models.Sessions.GetById(input.SessionId)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	session.Messages = append(session.Messages, userMessageObjId, aiMessageObjId)
+
+	err = app.models.Sessions.Update(input.SessionId, session)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
 		return
 	}
 
@@ -197,5 +227,36 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 }
 
 func (app *application) getAllSessionMessagesHandler(w http.ResponseWriter, r *http.Request) {
+	id := app.readIDparam(r)
 
+	v := validator.New()
+	session, err := app.models.Sessions.GetById(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	messages, err := app.models.Messages.GetAllMesssageById(session.Messages)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusOK, envelope{"messages": messages}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 }

@@ -23,13 +23,13 @@ type MessageModel struct {
 	Collection *mongo.Collection
 }
 
-func (m MessageModel) Insert(message *Message) error {
+func (m MessageModel) Insert(message *Message) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
 	sessionObjectId, err := primitive.ObjectIDFromHex(message.SessionId)
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	messageDoc := bson.M{
@@ -37,17 +37,18 @@ func (m MessageModel) Insert(message *Message) error {
 		"data":       message.Data,
 	}
 
-	_, err = m.Collection.InsertOne(ctx, messageDoc)
+	res, err := m.Collection.InsertOne(ctx, messageDoc)
 	if err != nil {
 		switch {
 		case mongo.IsDuplicateKeyError(err):
-			return ErrCannotInsert
+			return "", ErrCannotInsert
 		default:
-			return err
+			return "", err
 		}
 	}
+	message.ID = res.InsertedID.(primitive.ObjectID)
 
-	return nil
+	return message.ID.Hex(), nil
 }
 
 func (m MessageModel) GetById(id string) (*Message, error) {
@@ -70,4 +71,28 @@ func (m MessageModel) GetById(id string) (*Message, error) {
 	}
 
 	return &message, nil
+}
+
+func (m MessageModel) GetAllMesssageById(ids []primitive.ObjectID) ([]*Message, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	filter := bson.M{"_id": bson.M{"$in": ids}}
+
+	cursor, err := m.Collection.Find(ctx, filter)
+	if err != nil {
+		return nil, err
+	}
+	defer cursor.Close(ctx)
+
+	var messages []*Message
+	if err = cursor.All(ctx, &messages); err != nil {
+		return nil, err
+	}
+
+	if len(messages) == 0 {
+		return nil, ErrRecordNotFound
+	}
+
+	return messages, nil
 }

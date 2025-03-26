@@ -96,7 +96,7 @@ func (m ChannelModel) Update(id string, channel *Channel) error {
 		},
 	}
 
-	err = m.Collection.FindOneAndUpdate(ctx, bson.M{"_id": objectID}, channelDoc).Err()
+	_, err = m.Collection.UpdateOne(ctx, bson.M{"_id": objectID}, channelDoc)
 	if err != nil {
 		if err == mongo.ErrNoDocuments {
 			return ErrRecordNotFound

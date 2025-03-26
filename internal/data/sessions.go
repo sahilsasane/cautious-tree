@@ -81,3 +81,31 @@ func (m SessionModel) GetById(id string) (*Session, error) {
 
 	return &session, nil
 }
+
+func (m SessionModel) Update(id string, session *Session) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	sessionDoc := bson.M{
+		"$push": bson.M{
+			"messages": bson.M{
+				"$each": session.Messages,
+			},
+		},
+	}
+
+	_, err = m.Collection.UpdateOne(ctx, bson.M{"_id": objectId}, sessionDoc)
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+
+	return nil
+}
