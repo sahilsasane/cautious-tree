@@ -42,6 +42,9 @@ type config struct {
 	jwt struct {
 		secret string
 	}
+	apiKey struct {
+		gemini string
+	}
 }
 
 type application struct {
@@ -58,6 +61,7 @@ func main() {
 	flag.StringVar(&cfg.env, "env", "development", "Environment")
 	flag.StringVar(&cfg.db.uri, "mongo-uri", "", "Mongo Uri")
 	flag.StringVar(&cfg.db.database, "db-name", "url", "Database name")
+	flag.StringVar(&cfg.apiKey.gemini, "gemini-api-key", "", "Gemini Api key")
 	flag.Uint64Var(&cfg.db.maxPoolSize, "db-max-pool-size", 100, "Max pool size")
 	flag.Uint64Var(&cfg.db.minPoolSize, "db-min-pool-size", 10, "Min pool size")
 	flag.StringVar(&cfg.db.maxIdleTime, "db-max-idle-time", "15m", "Max idle time")

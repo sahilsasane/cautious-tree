@@ -91,18 +91,19 @@ func (m TreeModel) Update(id string, tree *Tree) error {
 	if err != nil {
 		return err
 	}
-
-	rootObjectId, err := primitive.ObjectIDFromHex(tree.Root)
-	if err != nil {
-		return err
-	}
-
 	treeDoc := bson.M{
 		"$set": bson.M{
-			"root":       rootObjectId,
 			"updated_at": time.Now(),
 			"tree":       tree.TreeStructure,
 		},
+	}
+
+	if tree.Root != "" {
+		rootObjectId, err := primitive.ObjectIDFromHex(tree.Root)
+		if err != nil {
+			return err
+		}
+		treeDoc["$set"].(bson.M)["root"] = rootObjectId
 	}
 
 	err = m.Collection.FindOneAndUpdate(ctx, bson.M{"channel_id": objectID}, treeDoc).Err()

@@ -31,6 +31,7 @@ func (app *application) routes() http.Handler {
 	router.HandlerFunc(http.MethodPost, "/v1/sessions/copy", app.copySessionHandler)
 	router.HandlerFunc(http.MethodPut, "/v1/sessions/:id", app.appendContextHandler)
 	router.HandlerFunc(http.MethodDelete, "/v1/sessions/:id", app.deleteSessionHandler)
+	router.HandlerFunc(http.MethodGet, "/v1/sessions/:id/messages", app.getAllSessionMessagesHandler)
 	router.HandlerFunc(http.MethodPost, "/v1/sessions/message", app.sendSessionMessageHandler)
 
 	return router

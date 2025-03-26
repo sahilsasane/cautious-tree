@@ -11,9 +11,12 @@ import (
 )
 
 type Message struct {
-	ID        primitive.ObjectID     `json:"id" bson:"_id"`
-	SessionId string                 `json:"session_id" bson:"session_id"`
-	Data      map[string]interface{} `json:"data" bson:"data"`
+	ID        primitive.ObjectID `json:"id" bson:"_id"`
+	SessionId string             `json:"session_id" bson:"session_id"`
+	Data      struct {
+		Role  string        `json:"role"`
+		Parts []interface{} `json:"parts"`
+	} `json:"data"`
 }
 
 type MessageModel struct {
@@ -24,12 +27,17 @@ func (m MessageModel) Insert(message *Message) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	sessionObjectId, err := primitive.ObjectIDFromHex(message.SessionId)
+	if err != nil {
+		return err
+	}
+
 	messageDoc := bson.M{
-		"session_id": message.SessionId,
+		"session_id": sessionObjectId,
 		"data":       message.Data,
 	}
 
-	_, err := m.Collection.InsertOne(ctx, messageDoc)
+	_, err = m.Collection.InsertOne(ctx, messageDoc)
 	if err != nil {
 		switch {
 		case mongo.IsDuplicateKeyError(err):
