@@ -28,12 +28,17 @@ func (m ChannelModel) Insert(channel *Channel) (string, error) {
 
 	channel.CreatedAt = time.Now()
 
+	userObjectId, err := primitive.ObjectIDFromHex(channel.UserId)
+	if err != nil {
+		return "", err
+	}
+
 	channelDoc := bson.M{
 		"_id":        channel.ID,
 		"created_at": time.Now(),
 		"tree":       channel.Tree,
 		"sessions":   channel.Sessions,
-		"user_id":    channel.UserId,
+		"user_id":    userObjectId,
 	}
 
 	res, err := m.Collection.InsertOne(ctx, channelDoc)

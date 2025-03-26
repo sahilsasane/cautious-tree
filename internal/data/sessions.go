@@ -27,15 +27,24 @@ func (m SessionModel) Insert(session *Session) (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
 	defer cancel()
 
+	channelObjectID, err := primitive.ObjectIDFromHex(session.ChannelId)
+	if err != nil {
+		return "", err
+	}
+
 	sessionDoc := bson.M{
-		"channel_id": session.ChannelId,
+		"channel_id": channelObjectID,
 		"messages":   session.Messages,
 		"context":    session.Context,
 		"is_root":    session.IsRoot,
 	}
 
 	if !session.IsRoot {
-		sessionDoc["parent_id"] = session.ParentId
+		parentObjectID, err := primitive.ObjectIDFromHex(session.ChannelId)
+		if err != nil {
+			return "", err
+		}
+		sessionDoc["parent_id"] = parentObjectID
 	}
 
 	res, err := m.Collection.InsertOne(ctx, sessionDoc)

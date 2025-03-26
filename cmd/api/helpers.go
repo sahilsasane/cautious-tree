@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/julienschmidt/httprouter"
+	"go.mongodb.org/mongo-driver/bson/primitive"
 	"misc.sahilsasane.net/internal/data"
 )
 
@@ -135,17 +136,45 @@ func (app *application) getTreeStructure(session *data.Session, tree *data.Tree)
 			node := queue.Remove(queue.Front()).(map[string]interface{})
 
 			if node["root"].(string) == parentId {
-				children := node["children"].([]interface{})
+				// Handle the children array safely with type checking
+				var children []interface{}
+
+				// Check what type the children field actually is
+				switch childrenVal := node["children"].(type) {
+				case []interface{}:
+					children = childrenVal
+				case primitive.A:
+					// Convert primitive.A to []interface{}
+					children = make([]interface{}, len(childrenVal))
+					copy(children, childrenVal)
+				default:
+					// Initialize a new array if it's neither type
+					children = []interface{}{}
+				}
+
+				// Add the new node
 				children = append(children, map[string]interface{}{
 					"root":     session.ID.Hex(),
 					"children": []interface{}{},
 				})
+
 				node["children"] = children
 				return existingTree
 			}
 
-			// Add all children to the queue
-			if children, ok := node["children"].([]interface{}); ok {
+			// Add all children to the queue - with safer type handling
+			if childrenVal, exists := node["children"]; exists {
+				var children []interface{}
+
+				switch typedChildren := childrenVal.(type) {
+				case []interface{}:
+					children = typedChildren
+				case primitive.A:
+					// Convert primitive.A to []interface{}
+					children = make([]interface{}, len(typedChildren))
+					copy(children, typedChildren)
+				}
+
 				for _, child := range children {
 					if childMap, ok := child.(map[string]interface{}); ok {
 						queue.PushBack(childMap)
