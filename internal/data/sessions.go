@@ -109,3 +109,23 @@ func (m SessionModel) Update(id string, session *Session) error {
 
 	return nil
 }
+
+func (m SessionModel) Delete(id string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+	defer cancel()
+
+	objectId, err := primitive.ObjectIDFromHex(id)
+	if err != nil {
+		return err
+	}
+
+	_, err = m.Collection.DeleteOne(ctx, bson.M{"_id": objectId})
+	if err != nil {
+		if err == mongo.ErrNoDocuments {
+			return ErrRecordNotFound
+		}
+		return err
+	}
+
+	return nil
+}

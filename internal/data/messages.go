@@ -91,7 +91,7 @@ func (m MessageModel) GetAllMesssageById(ids []primitive.ObjectID) ([]*Message, 
 	}
 
 	if len(messages) == 0 {
-		return nil, ErrRecordNotFound
+		return nil, nil
 	}
 
 	return messages, nil

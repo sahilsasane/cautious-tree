@@ -113,10 +113,74 @@ func (app *application) copySessionHandler(w http.ResponseWriter, r *http.Reques
 
 }
 func (app *application) appendContextHandler(w http.ResponseWriter, r *http.Request) {
+	id := app.readIDparam(r)
+	var input struct {
+		SrcSessionId string `json:"src_session_id"`
+	}
+
+	v := validator.New()
+
+	err := app.readJSON(w, r, &input)
+	if err != nil {
+		app.badRequestResponse(w, r, err)
+		return
+	}
+
+	session, err := app.models.Sessions.GetById(input.SrcSessionId)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	newSession := &data.Session{
+		Messages: session.Messages,
+	}
+
+	err = app.models.Sessions.Update(id, newSession)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"result": "Session " + id + " appended context from" + session.ID.Hex()}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 
 }
 func (app *application) deleteSessionHandler(w http.ResponseWriter, r *http.Request) {
+	id := app.readIDparam(r)
 
+	v := validator.New()
+	err := app.models.Sessions.Delete(id)
+	if err != nil {
+		switch {
+		case errors.Is(err, data.ErrRecordNotFound):
+			v.AddError("session", "not found")
+			app.failedValidationResponse(w, r, v.Errors)
+		default:
+			app.serverErrorResponse(w, r, err)
+		}
+		return
+	}
+	err = app.writeJSON(w, http.StatusAccepted, envelope{"result": "Session " + id + " deleted successfully"}, nil)
+	if err != nil {
+		app.serverErrorResponse(w, r, err)
+		return
+	}
 }
 
 func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http.Request) {
