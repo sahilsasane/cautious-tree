@@ -123,8 +123,8 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 	var input struct {
 		SessionId string `json:"session_id"`
 		Data      struct {
-			Role  string        `json:"role"`
-			Parts []interface{} `json:"parts"`
+			Role  string              `json:"role"`
+			Parts []map[string]string `json:"parts"`
 		} `json:"data"`
 	}
 
@@ -159,7 +159,10 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	aiResponse, err := llm.GetGeminiResponse((*llm.Data)(&input.Data))
+	aiResponse, err := llm.GetGeminiResponse(&llm.Data{
+		Role:  input.Data.Role,
+		Parts: input.Data.Parts,
+	})
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
@@ -170,12 +173,12 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 	aiMessage := &data.Message{
 		SessionId: input.SessionId,
 		Data: struct {
-			Role  string        "json:\"role\""
-			Parts []interface{} "json:\"parts\""
+			Role  string              "json:\"role\""
+			Parts []map[string]string "json:\"parts\""
 		}{
 			Role: "model",
-			Parts: []interface{}{
-				map[string]interface{}{
+			Parts: []map[string]string{
+				map[string]string{
 					"text": aiResponse,
 				},
 			},

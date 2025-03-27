@@ -14,8 +14,8 @@ type Message struct {
 	ID        primitive.ObjectID `json:"id" bson:"_id"`
 	SessionId string             `json:"session_id" bson:"session_id"`
 	Data      struct {
-		Role  string        `json:"role"`
-		Parts []interface{} `json:"parts"`
+		Role  string              `json:"role"`
+		Parts []map[string]string `json:"parts"`
 	} `json:"data"`
 }
 

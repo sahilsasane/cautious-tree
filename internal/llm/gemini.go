@@ -14,8 +14,8 @@ var (
 )
 
 type Data struct {
-	Role  string        `json:"role"`
-	Parts []interface{} `json:"parts"`
+	Role  string              `json:"role"`
+	Parts []map[string]string `json:"parts"`
 }
 
 type GeminiResponse struct {
