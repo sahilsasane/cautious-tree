@@ -186,3 +186,22 @@ func (app *application) getTreeStructure(session *data.Session, tree *data.Tree)
 		return existingTree
 	}
 }
+func (app *application) cleanupInactiveSessions() {
+	app.sessionMutex.Lock()
+	defer app.sessionMutex.Unlock()
+
+	if len(app.activeSessions) > 100 {
+		count := 0
+		for key := range app.activeSessions {
+			delete(app.activeSessions, key)
+			count++
+			if count >= len(app.activeSessions)/2 {
+				break
+			}
+		}
+		app.logger.PrintInfo("cleaned up sessions", map[string]string{
+			"removed":   fmt.Sprintf("%d", count),
+			"remaining": fmt.Sprintf("%d", len(app.activeSessions)),
+		})
+	}
+}

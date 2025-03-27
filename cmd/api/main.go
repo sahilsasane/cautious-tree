@@ -14,6 +14,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 	"misc.sahilsasane.net/internal/data"
 	"misc.sahilsasane.net/internal/jsonlog"
+	"misc.sahilsasane.net/internal/llm"
 )
 
 var (
@@ -48,10 +49,12 @@ type config struct {
 }
 
 type application struct {
-	config config
-	logger *jsonlog.Logger
-	models data.Models
-	wg     sync.WaitGroup
+	config         config
+	logger         *jsonlog.Logger
+	models         data.Models
+	wg             sync.WaitGroup
+	activeSessions map[string]*llm.ChatSession
+	sessionMutex   sync.RWMutex
 }
 
 func main() {
@@ -96,9 +99,10 @@ func main() {
 	expvar.NewString("version").Set(version)
 
 	app := &application{
-		config: cfg,
-		logger: logger,
-		models: data.NewModels(db, cfg.db.database),
+		config:         cfg,
+		logger:         logger,
+		models:         data.NewModels(db, cfg.db.database),
+		activeSessions: make(map[string]*llm.ChatSession),
 	}
 
 	err = app.serve()

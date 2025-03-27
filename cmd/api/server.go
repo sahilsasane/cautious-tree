@@ -47,6 +47,15 @@ func (app *application) serve() error {
 		app.wg.Wait()
 		shutdownError <- nil
 	}()
+	go func() {
+		ticker := time.NewTicker(30 * time.Minute)
+		defer ticker.Stop()
+
+		for range ticker.C {
+			// Clean up sessions that haven't been used in the last hour
+			app.cleanupInactiveSessions()
+		}
+	}()
 
 	app.logger.PrintInfo("starting server", map[string]string{
 		"addr": srv.Addr,

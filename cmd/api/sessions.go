@@ -135,13 +135,13 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 	}
 	v := validator.New()
 
+	// Create message for DB storage
 	message := &data.Message{
 		SessionId: input.SessionId,
 		Data:      input.Data,
 	}
 
-	// fmt.Printf("\n\n%+v\n\n", message)
-
+	// Insert user message into database
 	userMessageId, err := app.models.Messages.Insert(message)
 	if err != nil {
 		switch {
@@ -159,17 +159,73 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	aiResponse, err := llm.GetGeminiResponse(&llm.Data{
-		Role:  input.Data.Role,
-		Parts: input.Data.Parts,
-	})
+	// Get or create the chat session
+	app.sessionMutex.RLock()
+	chatSession, exists := app.activeSessions[input.SessionId]
+	app.sessionMutex.RUnlock()
+	if !exists {
+		// Session not in cache, need to build it from DB
+		session, err := app.models.Sessions.GetById(input.SessionId)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				v.AddError("session", "not found")
+				app.failedValidationResponse(w, r, v.Errors)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+			return
+		}
+
+		// Get previous messages
+		previousMessages, err := app.models.Messages.GetAllMesssageById(session.Messages)
+		if err != nil {
+			app.serverErrorResponse(w, r, err)
+			return
+		}
+
+		// Create new chat session with history
+		chatSession = llm.NewChatSession()
+		for _, msg := range previousMessages {
+			if msg.Data.Role == "user" && len(msg.Data.Parts) > 0 {
+				if textValue, ok := msg.Data.Parts[0]["text"]; ok {
+					chatSession.AddUserMessage(textValue)
+				}
+			} else if msg.Data.Role == "model" && len(msg.Data.Parts) > 0 {
+				if textValue, ok := msg.Data.Parts[0]["text"]; ok {
+					chatSession.AddModelMessage(textValue)
+				}
+			}
+		}
+
+		// Store in cache
+		app.sessionMutex.Lock()
+		app.activeSessions[input.SessionId] = chatSession
+		app.sessionMutex.Unlock()
+	}
+
+	// Extract user message text
+	userMessageText := ""
+	if len(input.Data.Parts) > 0 {
+		if text, ok := input.Data.Parts[0]["text"]; ok {
+			userMessageText = text
+		}
+	}
+
+	// Add current message to the session
+	chatSession.AddUserMessage(userMessageText)
+
+	// Get AI response using entire conversation history
+	aiResponse, err := llm.GetGeminiResponse(chatSession.Messages)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
 	}
 
-	// fmt.Print("\n\n", aiResponse, "\n\n")
+	// Add AI response to chat history
+	chatSession.AddModelMessage(aiResponse)
 
+	// Create AI message for DB storage
 	aiMessage := &data.Message{
 		SessionId: input.SessionId,
 		Data: struct {
@@ -178,13 +234,12 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		}{
 			Role: "model",
 			Parts: []map[string]string{
-				map[string]string{
-					"text": aiResponse,
-				},
+				{"text": aiResponse},
 			},
 		},
 	}
 
+	// Insert AI message into database
 	aiMessageId, err := app.models.Messages.Insert(aiMessage)
 	if err != nil {
 		switch {
@@ -202,6 +257,7 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		return
 	}
 
+	// Update session with new message IDs
 	session, err := app.models.Sessions.GetById(input.SessionId)
 	if err != nil {
 		switch {

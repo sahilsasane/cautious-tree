@@ -13,6 +13,10 @@ var (
 	ErrNoResponseFromGemini = errors.New("no response from Gemini")
 )
 
+type ChatSession struct {
+	Messages []Data
+}
+
 type Data struct {
 	Role  string              `json:"role"`
 	Parts []map[string]string `json:"parts"`
@@ -28,13 +32,33 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
-func GetGeminiResponse(data *Data) (string, error) {
+func NewChatSession() *ChatSession {
+	return &ChatSession{
+		Messages: []Data{},
+	}
+}
+
+func (c *ChatSession) AddUserMessage(text string) {
+	c.Messages = append(c.Messages, Data{
+		Role:  "user",
+		Parts: []map[string]string{{"text": text}},
+	})
+}
+
+func (c *ChatSession) AddModelMessage(text string) {
+	c.Messages = append(c.Messages, Data{
+		Role:  "model",
+		Parts: []map[string]string{{"text": text}},
+	})
+}
+
+func GetGeminiResponse(messages []Data) (string, error) {
 	apiKey := os.Getenv("GEMINI_API_KEY")
 	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey
 
 	// Construct request payload
 	payload := map[string]interface{}{
-		"contents": []Data{*data},
+		"contents": messages,
 	}
 
 	reqBody, err := json.Marshal(payload)
