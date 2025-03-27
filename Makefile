@@ -23,7 +23,8 @@ confirm:
 run/api:
 	go run ./cmd/api \
 		-mongo-uri="${MONGO_URI}" \
-		-jwt-secret="${JWT_SECRET}"
+		-jwt-secret="${JWT_SECRET}" \
+		-gemini-api-key="${GEMINI_API_KEY}" 
 # ==================================================================================== #
 # QUALITY CONTROL
 # ==================================================================================== #

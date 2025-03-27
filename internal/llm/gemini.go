@@ -6,7 +6,6 @@ import (
 	"errors"
 	"io"
 	"net/http"
-	"os"
 )
 
 var (
@@ -14,7 +13,20 @@ var (
 )
 
 type ChatSession struct {
+	client   *GeminiClient
 	Messages []Data
+}
+
+type GeminiClient struct {
+	APIKey string
+	Model  string
+}
+
+func NewGeminiClient(apiKey string) *GeminiClient {
+	return &GeminiClient{
+		APIKey: apiKey,
+		Model:  "gemini-2.0-flash",
+	}
 }
 
 type Data struct {
@@ -32,8 +44,12 @@ type GeminiResponse struct {
 	} `json:"candidates"`
 }
 
-func NewChatSession() *ChatSession {
+func NewChatSession(client *GeminiClient) *ChatSession {
+	if client == nil {
+		panic("gemini client cannot be nil")
+	}
 	return &ChatSession{
+		client:   client,
 		Messages: []Data{},
 	}
 }
@@ -52,9 +68,8 @@ func (c *ChatSession) AddModelMessage(text string) {
 	})
 }
 
-func GetGeminiResponse(messages []Data) (string, error) {
-	apiKey := os.Getenv("GEMINI_API_KEY")
-	url := "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=" + apiKey
+func (c *ChatSession) GetGeminiResponse(messages []Data) (string, error) {
+	url := "https://generativelanguage.googleapis.com/v1beta/models/" + c.client.Model + ":generateContent?key=" + c.client.APIKey
 
 	// Construct request payload
 	payload := map[string]interface{}{
@@ -96,3 +111,7 @@ func GetGeminiResponse(messages []Data) (string, error) {
 
 	return "", ErrNoResponseFromGemini
 }
+
+// func GetChatSummary(message []Data) (string, error) {
+
+// }

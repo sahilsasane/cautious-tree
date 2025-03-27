@@ -55,6 +55,7 @@ type application struct {
 	wg             sync.WaitGroup
 	activeSessions map[string]*llm.ChatSession
 	sessionMutex   sync.RWMutex
+	geminiClient   *llm.GeminiClient
 }
 
 func main() {
@@ -103,6 +104,7 @@ func main() {
 		logger:         logger,
 		models:         data.NewModels(db, cfg.db.database),
 		activeSessions: make(map[string]*llm.ChatSession),
+		geminiClient:   llm.NewGeminiClient(cfg.apiKey.gemini),
 	}
 
 	err = app.serve()

@@ -13,6 +13,7 @@ package main
 // 	"github.com/felixge/httpsnoop"
 // 	"github.com/pascaldekloe/jwt"
 // 	"github.com/tomasen/realip"
+// 	"go.mongodb.org/mongo-driver/bson/primitive"
 // 	"golang.org/x/time/rate"
 // 	"misc.sahilsasane.net/internal/data"
 // )
@@ -70,12 +71,6 @@ package main
 // 	})
 // }
 
-// func (app *application) requireActivatedUser(next http.Handler) http.Handler {
-// 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-
-// 	})
-// }
-
 // func (app *application) authenticate(next http.Handler) http.Handler {
 // 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 // 		w.Header().Add("Vary", "Authorization")
@@ -116,12 +111,20 @@ package main
 // 			return
 // 		}
 
-// 		userID, err := strconv.ParseInt(claims.Subject, 10, 64)
+// 		userID := claims.Subject
+// 		fmt.Print("\n", userID, "\n")
+// 		fmt.Print("\n", claims, "\n")
+// 		if userID == "" {
+// 			app.invalidAuthenticationTokenResponse(w, r)
+// 			return
+// 		}
+
+// 		objId, err := primitive.ObjectIDFromHex(userID)
 // 		if err != nil {
 // 			app.serverErrorResponse(w, r, err)
 // 			return
 // 		}
-// 		user, err := app.models.Users.Get(userID)
+// 		user, err := app.models.Users.Get(objId)
 // 		if err != nil {
 // 			switch {
 // 			case errors.Is(err, data.ErrRecordNotFound):
@@ -161,6 +164,14 @@ package main
 
 // 		next.ServeHTTP(w, r)
 // 	})
+// }
+
+// func (app *application) requirePermission(next http.HandlerFunc) http.HandlerFunc {
+// 	fn := func(w http.ResponseWriter, r *http.Request) {
+
+// 		next.ServeHTTP(w, r)
+// 	}
+// 	return app.requireActivatedUser(fn)
 // }
 
 // func (app *application) enableCORS(next http.Handler) http.Handler {

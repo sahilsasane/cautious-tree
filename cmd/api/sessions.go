@@ -29,8 +29,23 @@ func (app *application) createSessionHandler(w http.ResponseWriter, r *http.Requ
 		IsRoot:    input.IsRoot,
 		ParentId:  input.ParentId,
 	}
-
 	v := validator.New()
+
+	if input.ParentId != "" {
+		parentSession, err := app.models.Sessions.GetById(input.ParentId)
+		if err != nil {
+			switch {
+			case errors.Is(err, data.ErrRecordNotFound):
+				v.AddError("session", "not found")
+				app.failedValidationResponse(w, r, v.Errors)
+			default:
+				app.serverErrorResponse(w, r, err)
+			}
+			return
+		}
+		session.Messages = parentSession.Messages
+	}
+
 	sessionId, err := app.models.Sessions.Insert(session)
 	if err != nil {
 		switch {
@@ -112,6 +127,7 @@ func (app *application) getSessionHandler(w http.ResponseWriter, r *http.Request
 func (app *application) copySessionHandler(w http.ResponseWriter, r *http.Request) {
 
 }
+
 func (app *application) appendContextHandler(w http.ResponseWriter, r *http.Request) {
 	id := app.readIDparam(r)
 	var input struct {
@@ -153,6 +169,10 @@ func (app *application) appendContextHandler(w http.ResponseWriter, r *http.Requ
 		}
 		return
 	}
+
+	app.sessionMutex.Lock()
+	delete(app.activeSessions, id)
+	app.sessionMutex.Unlock()
 
 	err = app.writeJSON(w, http.StatusAccepted, envelope{"result": "Session " + id + " appended context from" + session.ID.Hex()}, nil)
 	if err != nil {
@@ -249,7 +269,7 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 		}
 
 		// Create new chat session with history
-		chatSession = llm.NewChatSession()
+		chatSession = llm.NewChatSession(app.geminiClient)
 		for _, msg := range previousMessages {
 			if msg.Data.Role == "user" && len(msg.Data.Parts) > 0 {
 				if textValue, ok := msg.Data.Parts[0]["text"]; ok {
@@ -280,7 +300,7 @@ func (app *application) sendSessionMessageHandler(w http.ResponseWriter, r *http
 	chatSession.AddUserMessage(userMessageText)
 
 	// Get AI response using entire conversation history
-	aiResponse, err := llm.GetGeminiResponse(chatSession.Messages)
+	aiResponse, err := chatSession.GetGeminiResponse(chatSession.Messages)
 	if err != nil {
 		app.serverErrorResponse(w, r, err)
 		return
